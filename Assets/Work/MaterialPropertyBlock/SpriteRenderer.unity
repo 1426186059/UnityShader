@@ -214,7 +214,7 @@ AudioListener:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1000001}
   m_Enabled: 1
---- !u!1 &2000001
+--- !u!1 &595874383
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -222,22 +222,22 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2000002}
-  - component: {fileID: 2000003}
+  - component: {fileID: 595874384}
+  - component: {fileID: 595874385}
   m_Layer: 0
-  m_Name: MaterialPropertyBlock Test
+  m_Name: GameObject
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2000002
+--- !u!4 &595874384
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2000001}
+  m_GameObject: {fileID: 595874383}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -246,22 +246,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2000003
+--- !u!114 &595874385
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2000001}
+  m_GameObject: {fileID: 595874383}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c1d2e3f405162738a9bacbdcedfe0f10, type: 3}
+  m_Script: {fileID: 11500000, guid: 4a65b742303c5d5488b71ca48c19c790, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  testShader: {fileID: 4800000, guid: a1b2c3d4e5f6470819a2b3c4d5e6f701, type: 3}
+  objectCount: 20
+  enableInstancing: 0
+  tintSource: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1000002}
-  - {fileID: 2000002}
+  - {fileID: 595874384}
