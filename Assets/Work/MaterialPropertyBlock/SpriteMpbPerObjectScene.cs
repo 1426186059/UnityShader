@@ -4,22 +4,15 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// 新场景 <c>SpriteMpbPerObject.unity</c> 的搭建与统计。
+/// 场景 <c>SpriteMpbPerObject.unity</c> 的搭建与统计。
 ///
 /// <para>
-/// 场景本身只有一台相机（它会在 Play 时自动挂上本组件，见 <see cref="AutoBoot"/>），
-/// 12 个物体由本脚本在运行时生成；每个物体的 GameObject 上挂一个
-/// <see cref="SpriteRendererMpbPerObject"/> —— 也就是<b>每个物体各自持有一份 MaterialPropertyBlock</b>。
+/// 12 个物体在运行时生成，每个物体的 GameObject 上挂一个 <see cref="SpriteRendererMpbPerObject"/>
+/// —— 也就是<b>每个物体各自持有一份 MaterialPropertyBlock</b>。
+/// 对照：<c>SpriteRenderer.unity</c>（SpriteRendererMpbSimple）是<b>所有物体共用同一份</b> MaterialPropertyBlock。
 /// </para>
 ///
-/// <para>
-/// 对照：上一个场景（<c>SpriteRenderer.unity</c>）是<b>所有物体共用同一份</b> MaterialPropertyBlock。
-/// 本场景测的就是"共用 vs 各自一份"是不是影响合批的那个变量。
-/// </para>
-///
-/// <para><b>按键</b>：<c>1</c> 各自 MPB 设 <c>_Color</c>（默认）· <c>2</c> 各自 MPB 设 <c>_RendererColor</c> ·
-/// <c>3</c> 各自 <c>sr.color</c>（不走 MPB）· <c>4</c> 切换材质 Enable GPU Instancing。</para>
-///
+/// <para><b>按键</b>：<c>4</c> 切换材质 Enable GPU Instancing · <c>R</c> 重建并重新随机颜色。</para>
 /// <para>每秒往 Console 打一行 <c>[SR-MPB-PEROBJ]</c> 读数（Batches / DrawCalls / SetPassCalls）。</para>
 /// </summary>
 [DisallowMultipleComponent]
@@ -27,21 +20,14 @@ public sealed class SpriteMpbPerObjectScene : MonoBehaviour
 {
     private const int Count = 12;
 
-    private static readonly string[] ModeNames =
-    {
-        "各自 MPB 设 _Color",
-        "各自 MPB 设 _RendererColor",
-        "各自 sr.color（不走 MPB）",
-    };
-
     private readonly List<GameObject> _objects = new List<GameObject>();
 
     private Texture2D _texture;
     private Sprite _sprite;
     private Material _material;
     private bool _enableInstancing;
-    private int _mode;
     private float _nextLog;
+    private float _hueOffset;
 
     private ProfilerRecorder _statBatches, _statDrawCalls, _statSetPass;
     private GUIStyle _titleStyle, _bodyStyle;
@@ -49,7 +35,7 @@ public sealed class SpriteMpbPerObjectScene : MonoBehaviour
     private void Awake()
     {
         _texture = CreateWhiteTexture();
-        _sprite = Sprite.Create(_texture, new Rect(0f, 0f, 2f, 2f), new Vector2(0.5f, 0.5f), 2f);  // 2px / PPU 2 = 1 世界单位
+        _sprite = Sprite.Create(_texture, new Rect(0f, 0f, 2f, 2f), new Vector2(0.5f, 0.5f), 2f);   // 2px / PPU 2 = 1 世界单位
         _material = new Material(Shader.Find("Sprites/Default"))
         {
             name = "SpritesDefault-Shared",
@@ -96,17 +82,15 @@ public sealed class SpriteMpbPerObjectScene : MonoBehaviour
             sr.sprite = _sprite;
             sr.sharedMaterial = _material;     // ★ 所有物体共用同一个材质
 
-            // ★ 每个物体一个组件实例，组件内部各自 new 一份 MaterialPropertyBlock
+            // ★ 每个物体一个组件实例，组件内部各自 new 一份 MaterialPropertyBlock（不共用、不循环复用）
             var tinter = go.AddComponent<SpriteRendererMpbPerObject>();
-            tinter.Tint = TintFor(i);
+            tinter.Tint = Color.HSVToRGB(Mathf.Repeat(_hueOffset + i / (float)Count, 1f), 0.75f, 1f);
 
             _objects.Add(go);
         }
 
-        Debug.Log($"[SR-MPB-PEROBJ] 重建｜{ModeNames[_mode]}｜材质 Instancing={_enableInstancing}｜物体={Count}（每个物体各持一份 MPB）");
+        Debug.Log($"[SR-MPB-PEROBJ] 重建｜物体={Count}（每个物体各持一份 MPB，设 _Color）｜材质 Instancing={_enableInstancing}");
     }
-
-    private static Color TintFor(int index) => Color.HSVToRGB(index / (float)Count, 0.75f, 1f);
 
     private static Texture2D CreateWhiteTexture()
     {
@@ -120,10 +104,6 @@ public sealed class SpriteMpbPerObjectScene : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1)) { _mode = 0; Rebuild(); }
-        if (Input.GetKeyDown(KeyCode.Alpha2)) { _mode = 1; Rebuild(); }
-        if (Input.GetKeyDown(KeyCode.Alpha3)) { _mode = 2; Rebuild(); }
-
         if (Input.GetKeyDown(KeyCode.Alpha4))
         {
             _enableInstancing = !_enableInstancing;
@@ -131,10 +111,16 @@ public sealed class SpriteMpbPerObjectScene : MonoBehaviour
             Debug.Log($"[SR-MPB-PEROBJ] 材质 Enable GPU Instancing = {_enableInstancing}");
         }
 
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            _hueOffset += 0.21f;
+            Rebuild();
+        }
+
         if (Time.unscaledTime < _nextLog) return;
         _nextLog = Time.unscaledTime + 1f;
 
-        Debug.Log($"[SR-MPB-PEROBJ] {ModeNames[_mode]}｜Instancing={_enableInstancing}｜物体={Count}｜" +
+        Debug.Log($"[SR-MPB-PEROBJ] 物体={Count}｜Instancing={_enableInstancing}｜" +
                   $"Batches={Stat(_statBatches)} DrawCalls={Stat(_statDrawCalls)} SetPassCalls={Stat(_statSetPass)}");
     }
 
@@ -148,20 +134,20 @@ public sealed class SpriteMpbPerObjectScene : MonoBehaviour
             _bodyStyle = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true };
         }
 
-        GUILayout.BeginArea(new Rect(12f, 12f, 700f, 200f), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(12f, 12f, 640f, 170f), GUI.skin.box);
 
         GUI.color = new Color(0.6f, 0.85f, 1f);
-        GUILayout.Label($"每个物体各持一份 MPB｜{ModeNames[_mode]}｜Instancing={_enableInstancing}", _titleStyle);
+        GUILayout.Label($"每个物体各持一份 MPB（各自 SetPropertyBlock _Color）｜Instancing={_enableInstancing}", _titleStyle);
         GUI.color = Color.white;
 
-        GUILayout.Label($"物体数 {Count}（材质 Sprites/Default 共用一份；MPB 每个物体一份，不共用也不循环复用）", _bodyStyle);
+        GUILayout.Label($"物体数 {Count}｜材质共用一份（Sprites/Default）｜每秒打印一行 [SR-MPB-PEROBJ]", _bodyStyle);
 
         GUI.color = new Color(1f, 0.85f, 0.45f);
         GUILayout.Label($"Batches={Stat(_statBatches)}    DrawCalls={Stat(_statDrawCalls)}    SetPassCalls={Stat(_statSetPass)}", _titleStyle);
         GUI.color = Color.white;
 
-        GUILayout.Label("读法：≈12 = 每个物体一次 draw（没合批）；≈1~2 = 合并成立。对着上一场景（共用一份 MPB）比数值即可。", _bodyStyle);
-        GUILayout.Label("按键：1 各自MPB设_Color · 2 各自MPB设_RendererColor · 3 各自sr.color · 4 切换 Instancing", _bodyStyle);
+        GUILayout.Label("读法：≈12 = 每个物体一次 draw（没合批）；≈1~2 = 合并成立。与共用一份 MPB 的场景比数值。", _bodyStyle);
+        GUILayout.Label("按键：4 切换 Instancing · R 换一组颜色重建", _bodyStyle);
 
         GUILayout.EndArea();
     }
